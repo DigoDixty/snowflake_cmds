@@ -1,4 +1,4 @@
-CREATE OR REPLACE PROCEDURE public.crete_tasks_parquet(schemaname string , table_name string, v_warehouse string, file_format string)
+CREATE OR REPLACE PROCEDURE public.crete_tasks_parquet(schemaname string , table_name string, stage string, v_warehouse string, file_format string)
 RETURNS string
 LANGUAGE SQL
 AS $$
