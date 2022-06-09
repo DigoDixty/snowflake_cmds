@@ -15,6 +15,7 @@ EXECUTE IMMEDIATE query;
 query := 'ALTER TASK '|| schemaname || '.' || table_name || '_TASK RESUME;';
 
 EXECUTE IMMEDIATE query;
+RETURN query;
 
 END
 $$;
