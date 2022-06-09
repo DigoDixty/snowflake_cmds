@@ -27,7 +27,8 @@ CMD := SUBSTRING(CMD,0,LENGTH(CMD)-1);
 
 CMD := 'CREATE OR REPLACE TABLE '||schemaname||'.RAW_' || table_name || ' ('||CMD||');';
 
-return CMD;
+EXECUTE IMMEDIATE CMD;
+RETURN CMD;
 
 END
 $$;
