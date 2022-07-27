@@ -12,7 +12,9 @@ val_stage2 := '@PUBLIC.' ||val_stage || '/';
 BEGIN
 query :=  'SELECT EXPRESSION AS COLUMNS 
            FROM TABLE (infer_schema(location=>''' || val_stage2 || file_name || ''',
-           file_format=>'''|| file_type ||'''));';
+           file_format=>'''|| file_type ||'''))
+           ORDER BY 1
+           ;';
 res := (EXECUTE IMMEDIATE query);
 let cur cursor for res;
 OPEN cur;
