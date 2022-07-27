@@ -10,7 +10,9 @@ res resultset;
 BEGIN
 query :=  'SELECT COLUMN_NAME || '' '' || TYPE || '','' AS COLUMNS 
            FROM TABLE (infer_schema(location=>''@PUBLIC.' ||val_stage || '/' || file_name || ''', 
-           file_format=>'''|| file_type ||'''));';
+           file_format=>'''|| file_type ||'''))
+           ORDER BY 1
+           ;';
 
 res := (EXECUTE IMMEDIATE query);
 
