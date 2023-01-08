@@ -19,6 +19,7 @@ CMD_to_replace := '     INSERT INTO CHECK_COLUMNS_TABLE
             (SELECT count(1) from ' || schemaname || '.' || table_name || ' where col_name LIKE ''%-%T%:%:%.%'') AS TIMESTAMP,
             (SELECT count(1) from ' || schemaname || '.' || table_name || ' where is_real(to_variant(col_name)) = true) AS ONLY_NUMBERS,
             (SELECT count(1) from ' || schemaname || '.' || table_name || ' where col_name like ''%.%'') AS HAS_DECIMAL,
+            (SELECT count(1) from ' || schemaname || '.' || table_name || ' where col_name in (''0'',''1'') ) AS COL_BOOLEAN,
             (SELECT count(1) from ' || schemaname || '.' || table_name || ' ) AS full_table; ';
 
 CMD := CMD_to_replace;
@@ -44,6 +45,7 @@ QUERY := 'CREATE OR REPLACE TEMPORARY TABLE CHECK_COLUMNS_TABLE
             TIMESTAMP INT,
             ONLY_NUMBERS INT,
             HAS_DECIMAL INT,
+            COL_BOOLEAN INT,
             FULL_TABLE INT
             );
         ';
@@ -67,12 +69,23 @@ END;
 $$;
 
 
-SELECT  COLUMN_NAME,
-        CASE WHEN timestamp = not_empty AND COL_NULL < FULL_TABLE THEN 'TIMESTAMP' 
-             WHEN ONLY_NUMBERS > 0      AND HAS_DECIMAL > 0 THEN 'REAL'
-             WHEN ONLY_NUMBERS > 0      AND HAS_DECIMAL = 0 THEN 'INTEGER'
+SELECT COLUMN_NAME || ' ' || TYPE AS TO_CREATE, COLUMN_NAME || '::' || TYPE AS TO_REPLACE
+FROM
+(
+SELECT  CASE WHEN timestamp = not_empty     AND COL_NULL < FULL_TABLE THEN 'TIMESTAMP' 
+             WHEN ONLY_NUMBERS > 0          AND HAS_DECIMAL > 0 THEN 'REAL'
+             WHEN ONLY_NUMBERS > 0          AND HAS_DECIMAL = 0 THEN 'INTEGER'
+             WHEN NOT_EMPTY = COL_BOOLEAN    THEN 'BOOLEAN'
              ELSE 'STRING' END TYPE
 ,* 
-FROM CHECK_COLUMNS_TABLE;
+FROM CHECK_COLUMNS_TABLE
+) A;
 
-
+SELECT  CASE WHEN timestamp = not_empty     AND COL_NULL < FULL_TABLE THEN 'TIMESTAMP' 
+             WHEN ONLY_NUMBERS > 0          AND HAS_DECIMAL > 0 THEN 'REAL'
+             WHEN ONLY_NUMBERS > 0          AND HAS_DECIMAL = 0 THEN 'INTEGER'
+             WHEN NOT_EMPTY = COL_BOOLEAN    THEN 'BOOLEAN'
+             ELSE 'STRING' END TYPE
+,* 
+FROM CHECK_COLUMNS_TABLE
+;
