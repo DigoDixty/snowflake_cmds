@@ -1,12 +1,13 @@
+-- 1
 EXECUTE IMMEDIATE $$
 DECLARE 
 RES resultset;
 QUERY STRING;
 
-schemaname := 'schema';
+schemaname := 'SCHEMA';
 val_stage  := 'PARQUET_STAGE';
-table_name := 'TABLENAME';
-file_name  := 'directory/file.parquet';
+table_name := 'TABLE';
+file_name  := 'DIRECTORY';
 file_type  := 'parquet_format';
 
 CMD_to_replace := '     INSERT INTO CHECK_COLUMNS_TABLE
@@ -34,6 +35,7 @@ QUERY := 'SELECT COLUMN_NAME AS COLUMNS
          ;';
          
 RES := ( EXECUTE IMMEDIATE QUERY );
+--- apagar esse abaixo se der erro
 
 QUERY := 'CREATE OR REPLACE TEMPORARY TABLE CHECK_COLUMNS_TABLE
             (
@@ -48,7 +50,7 @@ QUERY := 'CREATE OR REPLACE TEMPORARY TABLE CHECK_COLUMNS_TABLE
             COL_BOOLEAN INT,
             FULL_TABLE INT
             );
-        ';
+        ';        
         
 EXECUTE IMMEDIATE (QUERY);
 
@@ -57,9 +59,8 @@ OPEN CUR;
     FOR row_variable IN CUR DO
         -- CMD := CMD || CHAR(10) REPLACE(CMD,'col_name',row_variable.COLUMNS);     
         CMD := REPLACE(CMD,'col_name',row_variable.COLUMNS);  
-        EXECUTE IMMEDIATE (CMD);
+        EXECUTE IMMEDIATE (CMD); -- se der erro
         CMD := CMD_to_replace;
-        
         
     END FOR;
 CMD := SUBSTRING(CMD,0,LENGTH(CMD)-1);
@@ -67,3 +68,32 @@ CMD := SUBSTRING(CMD,0,LENGTH(CMD)-1);
 RETURN QUERY;
 END;
 $$;
+
+-- 2
+SELECT 
+COLUMN_NAME || ' ' || TYPE || ',' AS TO_CREATE, 
+'$1:' || COLUMN_NAME || '::' || TYPE || ' AS col' || CAST(row_number() over (order by 1 asc) as string) || ',' AS TO_REPLACE
+,*
+FROM
+(
+SELECT  CASE WHEN COL_TIMESTAMP = not_empty     AND COL_NULL < FULL_TABLE   THEN 'TIMESTAMP' 
+             WHEN COL_DATE      = not_empty     AND COL_NULL < FULL_TABLE   THEN 'DATE' 
+             WHEN ONLY_NUMBERS > 0              AND HAS_DECIMAL > 0         THEN 'REAL'
+             WHEN ONLY_NUMBERS > 0              AND HAS_DECIMAL = 0         THEN 'INTEGER'
+             WHEN NOT_EMPTY = COL_BOOLEAN       AND COL_NULL < FULL_TABLE   THEN 'BOOLEAN'
+             ELSE 'STRING' END TYPE
+,* 
+FROM CHECK_COLUMNS_TABLE
+) A;
+
+
+
+SELECT  CASE WHEN timestamp = not_empty     AND COL_NULL < FULL_TABLE   THEN 'TIMESTAMP' 
+             WHEN ONLY_NUMBERS > 0          AND HAS_DECIMAL > 0         THEN 'REAL'
+             WHEN ONLY_NUMBERS > 0          AND HAS_DECIMAL = 0         THEN 'INTEGER'
+             WHEN NOT_EMPTY = COL_BOOLEAN   AND COL_NULL < FULL_TABLE   THEN 'BOOLEAN'
+             ELSE 'STRING' END TYPE
+,* 
+FROM CHECK_COLUMNS_TABLE
+WHERE COLUMN_NAME IN ('user_cpf', 'user_descomplica_id', 'user_dex_id')
+;
