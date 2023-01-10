@@ -17,7 +17,7 @@ CMD_to_replace := '     INSERT INTO CHECK_COLUMNS_TABLE
             (SELECT count(1) from ' || schemaname || '.' || table_name || ' where trim(col_name) <> '''''''') AS NOT_EMPTY,
             (SELECT count(1) from ' || schemaname || '.' || table_name || ' where col_name LIKE ''%-%-%T%:%:%.%'' or col_name LIKE ''%-%-%:%:%.%'' or col_name LIKE ''%-%-%:%:%'' ) AS COL_TIMESTAMP,
             (SELECT count(1) from ' || schemaname || '.' || table_name || ' where col_name LIKE ''____-__-__'') AS COL_DATE,
-            (SELECT count(1) from ' || schemaname || '.' || table_name || ' where is_real(to_variant(col_name)) = true) AS ONLY_NUMBERS,
+            (SELECT count(1) from ' || schemaname || '.' || table_name || ' where col_name REGEXP ''[0-9]*$'') AS ONLY_NUMBERS,
             (SELECT count(1) from ' || schemaname || '.' || table_name || ' where col_name like ''%.%'') AS HAS_DECIMAL,
             (SELECT count(1) from ' || schemaname || '.' || table_name || ' where col_name in (''0'',''1'') ) AS COL_BOOLEAN,
             (SELECT count(1) from ' || schemaname || '.' || table_name || ' ) AS full_table; ';
