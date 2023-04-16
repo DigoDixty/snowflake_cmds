@@ -1,0 +1,56 @@
+CREATE OR REPLACE VIEW ADMIN.RAW.VW_TASK_HISTORY AS
+SELECT ROW_NUMBER() OVER (PARTITION BY task_name ORDER BY start_time) rn2, * 
+FROM 
+(
+    SELECT 
+     T3.QUERY_ID, 
+     T1.NAME AS TASK_NAME,
+     T3.START_TIME, 
+     T3.END_TIME, 
+     (T3.TOTAL_ELAPSED_TIME/1000) TOTAL_ELAPSED_TIME_SEG,
+     CASE 
+        WHEN T3.QUERY_TYPE = 'DELETE' THEN SUBSTRING(REPLACE(REPLACE(REPLACE( SUBSTRING(T3.QUERY_TEXT,POSITION ('FROM' IN T3.QUERY_TEXT) +5), CHR(10),' '), CHR(13),' '),'  ',' '),0,POSITION(' ' IN REPLACE(REPLACE(REPLACE( SUBSTRING(T3.QUERY_TEXT,POSITION ('FROM' IN T3.QUERY_TEXT) +5), CHR(10),' '), CHR(13),' '),'  ',' ')))
+        WHEN T3.QUERY_TYPE = 'INSERT' THEN SUBSTRING(REPLACE(REPLACE(REPLACE( SUBSTRING(T3.QUERY_TEXT,POSITION ('INTO' IN T3.QUERY_TEXT) +5), CHR(10),' '), CHR(13),' '),'  ',' '),0,POSITION(' ' IN REPLACE(REPLACE(REPLACE( SUBSTRING(T3.QUERY_TEXT,POSITION ('INTO' IN T3.QUERY_TEXT) +5), CHR(10),' '), CHR(13),' '),'  ',' ')))
+     END TABLE_NAME,
+     T3.QUERY_TYPE,
+     CASE 
+         WHEN T3.QUERY_TYPE = 'INSERT' THEN T3.ROWS_INSERTED 
+         WHEN T3.QUERY_TYPE = 'DELETE' THEN T3.ROWS_DELETED
+         WHEN T3.QUERY_TYPE = 'UPDATE' THEN T3.ROWS_UPDATED
+     ELSE NULL END ROWS_USED,
+     T3.QUERY_TEXT, 
+     T3.EXECUTION_STATUS, 
+     ROW_NUMBER() OVER (PARTITION BY T1.NAME, T3.START_TIME::DATE  ORDER BY T3.START_TIME DESC) RN1
+    FROM
+    (
+        SELECT QUERY_ID, NAME, QUERY_TEXT, initcap(STATE) AS STATE, QUERY_START_TIME, SCHEDULED_FROM,  DATEDIFF('ms', QUERY_START_TIME, COALESCE(COMPLETED_TIME, current_timestamp())) as DURATION
+        FROM TABLE ( "BRONZE".INFORMATION_SCHEMA.TASK_HISTORY(
+                                                                scheduled_time_range_start => TO_TIMESTAMP_LTZ(DATEADD(DAY,-5,CURRENT_DATE() )) 
+                                                                --scheduled_time_range_start => TO_TIMESTAMP_LTZ( CURRENT_DATE() ) 
+                                                                ) ) 
+        WHERE schema_name = 'CURATED' AND database_name IN ('BRONZE') 
+        AND STATE = 'SUCCEEDED'
+        AND SCHEDULED_FROM = 'SCHEDULE'
+        
+        UNION ALL
+        
+        SELECT QUERY_ID, NAME, QUERY_TEXT, initcap(STATE) AS STATE, QUERY_START_TIME, SCHEDULED_FROM,  DATEDIFF('ms', QUERY_START_TIME, COALESCE(COMPLETED_TIME, current_timestamp())) as DURATION
+        FROM TABLE ( "SILVER".INFORMATION_SCHEMA.TASK_HISTORY(
+                                                                scheduled_time_range_start => TO_TIMESTAMP_LTZ(DATEADD(DAY,-5,CURRENT_DATE() )) 
+                                                                --scheduled_time_range_start => TO_TIMESTAMP_LTZ( CURRENT_DATE() ) 
+                                                                ) ) 
+        WHERE schema_name = 'CURATED' AND database_name IN ('SILVER') 
+        AND STATE = 'SUCCEEDED'
+        AND SCHEDULED_FROM = 'SCHEDULE'
+    ) T1
+    INNER JOIN SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY T2
+    ON T1.QUERY_ID = T2.QUERY_ID
+    INNER JOIN SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY T3
+    ON T2.SESSION_ID = T3.SESSION_ID
+    
+    WHERE 1 = 1
+    AND T3.EXECUTION_STATUS = 'SUCCESS'
+    AND T3.QUERY_TYPE IN ('INSERT', 'DELETE')
+    ) A
+WHERE RN1 = 1
+ORDER BY QUERY_ID, START_TIME;
