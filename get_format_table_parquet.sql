@@ -1,7 +1,7 @@
 create or replace procedure public.get_parquet_table(schemaname string , val_stage string, table_name string, file_name string, file_type string)
 returns string
 language sql
-as $$
+as 
 DECLARE
 cmd string := '';
 query string := '';
@@ -31,7 +31,7 @@ CMD := 'CREATE OR REPLACE TABLE '||schemaname||'.RAW_' || table_name || ' ('||CM
 RETURN CMD;
 
 END
-$$;
+;
 
 /*
 call public.get_parquet_table('public' , 'st_teste', 'MARD', 'MARD.parquet', 'file_format_parquet');
