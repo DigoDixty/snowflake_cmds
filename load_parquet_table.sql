@@ -1,7 +1,7 @@
 CREATE OR REPLACE PROCEDURE public.load_parquet_table(schemaname string , val_stage string, table_name string, file_name string, file_type string)
 RETURNS string
 LANGUAGE SQL
-AS $$
+AS 
 DECLARE
 cmd string := '';
 query string := '';
@@ -32,7 +32,7 @@ CMD := ' COPY INTO ' || schemaname ||'.RAW_' || table_name ||
        ';
 RETURN CMD;
 END
-$$;
+;
 
 /*
 call public.get_parquet_table('public' , 'st_teste', 'MARD', 'MARD.parquet', 'file_format_parquet');
